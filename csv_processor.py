@@ -1,5 +1,5 @@
 import csv
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 
 def read_csv(
@@ -87,5 +87,31 @@ def aggregate_rows(
         return min(values)
     elif operation == "max":
         return max(values)
+    elif operation == "median":
+        sorted_values = sorted(values)
+        n = len(sorted_values)
+        if n % 2 == 1:
+            return (sorted_values[n // 2])
+        else:
+            return (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
     else:
-        raise ValueError(f"Неизвестная операция: {operation}.")
+        available_ops = "avg, min, max, median"
+        raise ValueError(
+            f"Неизвестная операция: {operation}. Доступные: {available_ops}."
+        )
+
+
+def sort_rows(
+    rows: List[Dict[str, str]],
+    column: str,
+    reverse: bool = False
+) -> List[Dict[str, str]]:
+    """Сортируем по определённому столбцу."""
+    def get_key(row):
+        value = row.get(column, "")
+        try:
+            return float(value)
+        except ValueError:
+            return str(value).lower()
+
+    return sorted(rows, key=get_key, reverse=reverse)

@@ -1,6 +1,6 @@
 import pytest
 
-from csv_processor import filter_rows, aggregate_rows
+from csv_processor import filter_rows, aggregate_rows, sort_rows
 
 TEST_DATA = [
     {"name": "iphone", "brand": "apple", "price": "999", "rating": "4.9"},
@@ -29,3 +29,13 @@ def test_aggregate_avg():
 def test_aggregate_max():
     result = aggregate_rows(TEST_DATA, "price=max")
     assert result == 1199
+
+
+def test_aggregate_median():
+    result = aggregate_rows(TEST_DATA, "price=median")
+    assert result == 999.0
+
+
+def test_sorted_rating():
+    result = sort_rows(TEST_DATA, "rating")
+    assert result[0]["brand"] == "xiaomi"
