@@ -24,7 +24,68 @@ source venv/Scripts/activate
 ## Установите зависимости
 bash
 ```
-pip install requirement.txt
+pip install -r requirements.txt
+```
+
+## Настройка линтера и форматтера
+
+### Установка инструментов
+```bash
+pip install black flake8
+```
+
+### Форматирование кода
+```bash
+black .
+```
+
+### Проверка кода линтером
+```bash
+flake8 .
+```
+
+## Запуск тестов
+
+### Запуск всех тестов
+```bash
+pytest
+```
+
+### Запуск тестов с подробным выводом
+```bash
+pytest -v
+```
+
+### Запуск тестов с покрытием
+```bash
+pytest --cov=csv_processor
+```
+
+## Использование Makefile
+
+Для удобства разработки создан Makefile с основными командами:
+
+```bash
+# Установка зависимостей
+make install
+
+# Форматирование кода
+make format
+
+# Проверка кода линтером
+make lint
+
+# Запуск тестов
+make test
+
+# Запуск тестов с покрытием
+make test-cov
+
+# Очистка временных файлов
+make clean
+
+# Показать справку
+make help
 ```
 
 ## Пример использования CSV-файла `products.csv`

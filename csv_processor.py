@@ -1,5 +1,89 @@
 import csv
+from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
+
+
+class CSVProcessingError(Exception):
+    """Базовое исключение для ошибок обработки CSV."""
+    pass
+
+
+class UnsupportedOperationError(CSVProcessingError):
+    """Исключение для неподдерживаемых операций."""
+    pass
+
+
+class InvalidConditionError(CSVProcessingError):
+    """Исключение для некорректных условий фильтрации."""
+    pass
+
+
+class ColumnNotFoundError(CSVProcessingError):
+    """Исключение для отсутствующих столбцов."""
+    pass
+
+
+class Operation(ABC):
+    """Абстрактный базовый класс для операций."""
+    
+    @abstractmethod
+    def execute(self, values: List[float]) -> float:
+        """Выполнить операцию над списком значений."""
+        pass
+
+
+class AverageOperation(Operation):
+    """Операция вычисления среднего значения."""
+    
+    def execute(self, values: List[float]) -> float:
+        return round(sum(values) / len(values), 1)
+
+
+class MinOperation(Operation):
+    """Операция поиска минимального значения."""
+    
+    def execute(self, values: List[float]) -> float:
+        return min(values)
+
+
+class MaxOperation(Operation):
+    """Операция поиска максимального значения."""
+    
+    def execute(self, values: List[float]) -> float:
+        return max(values)
+
+
+class MedianOperation(Operation):
+    """Операция вычисления медианы."""
+    
+    def execute(self, values: List[float]) -> float:
+        sorted_values = sorted(values)
+        n = len(sorted_values)
+        if n % 2 == 1:
+            return sorted_values[n // 2]
+        else:
+            return (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
+
+
+class OperationFactory:
+    """Фабрика для создания операций."""
+    
+    _operations = {
+        "avg": AverageOperation(),
+        "min": MinOperation(),
+        "max": MaxOperation(),
+        "median": MedianOperation(),
+    }
+    
+    @classmethod
+    def get_operation(cls, operation_name: str) -> Operation:
+        """Получить операцию по имени."""
+        if operation_name not in cls._operations:
+            available_ops = ", ".join(cls._operations.keys())
+            raise UnsupportedOperationError(
+                f"Неизвестная операция: {operation_name}. Доступные: {available_ops}."
+            )
+        return cls._operations[operation_name]
 
 
 def read_csv(
@@ -35,7 +119,7 @@ def filter_rows(
         column, value = condition.split("<")
         operator = "<"
     else:
-        raise ValueError(f"Неверный формат условия: {condition}.")
+        raise InvalidConditionError(f"Неверный формат условия: {condition}.")
 
     filtered_products = []
     for row in rows:
@@ -79,26 +163,11 @@ def aggregate_rows(
             continue
 
     if not values:
-        raise ValueError(f"Нет числовых значений в столбце {column}.")
+        raise ColumnNotFoundError(f"Нет числовых значений в столбце {column}.")
 
-    if operation == "avg":
-        return round(sum(values) / len(values), 1)
-    elif operation == "min":
-        return min(values)
-    elif operation == "max":
-        return max(values)
-    elif operation == "median":
-        sorted_values = sorted(values)
-        n = len(sorted_values)
-        if n % 2 == 1:
-            return (sorted_values[n // 2])
-        else:
-            return (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
-    else:
-        available_ops = "avg, min, max, median"
-        raise ValueError(
-            f"Неизвестная операция: {operation}. Доступные: {available_ops}."
-        )
+    # Используем фабрику операций
+    operation_obj = OperationFactory.get_operation(operation)
+    return operation_obj.execute(values)
 
 
 def sort_rows(

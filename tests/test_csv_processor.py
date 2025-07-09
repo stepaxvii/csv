@@ -1,41 +1,93 @@
 import pytest
 
-from csv_processor import filter_rows, aggregate_rows, sort_rows
-
-TEST_DATA = [
-    {"name": "iphone", "brand": "apple", "price": "999", "rating": "4.9"},
-    {"name": "galaxy", "brand": "samsung", "price": "1199", "rating": "4.8"},
-    {"name": "redmi", "brand": "xiaomi", "price": "199", "rating": "4.6"},
-]
-
-
-def test_filter_equal_text():
-    result = filter_rows(TEST_DATA, "brand=apple")
-    assert len(result) == 1
-    assert result[0]["name"] == "iphone"
+from csv_processor import (
+    filter_rows, 
+    aggregate_rows, 
+    sort_rows,
+    CSVProcessingError,
+    UnsupportedOperationError,
+    InvalidConditionError,
+    ColumnNotFoundError
+)
 
 
-def test_filter_greater_than():
-    result = filter_rows(TEST_DATA, "price>1000")
-    assert len(result) == 1
-    assert result[0]["name"] == "galaxy"
+@pytest.fixture
+def test_data():
+    """Фикстура с тестовыми данными."""
+    return [
+        {"name": "iphone", "brand": "apple", "price": "999", "rating": "4.9"},
+        {"name": "galaxy", "brand": "samsung", "price": "1199", "rating": "4.8"},
+        {"name": "redmi", "brand": "xiaomi", "price": "199", "rating": "4.6"},
+    ]
 
 
-def test_aggregate_avg():
-    result = aggregate_rows(TEST_DATA, "price=avg")
-    assert result == pytest.approx((999 + 1199 + 199) / 3, 0.1)
+@pytest.mark.parametrize("condition,expected_count,expected_name", [
+    ("brand=apple", 1, "iphone"),
+    ("brand=xiaomi", 1, "redmi"),
+    ("price>1000", 1, "galaxy"),
+    ("price<500", 1, "redmi"),
+    ("rating>4.7", 2, "iphone"),  # iphone и galaxy
+])
+def test_filter_rows(test_data, condition, expected_count, expected_name):
+    """Тест фильтрации строк с различными условиями."""
+    result = filter_rows(test_data, condition)
+    assert len(result) == expected_count
+    if expected_count == 1:
+        assert result[0]["name"] == expected_name
 
 
-def test_aggregate_max():
-    result = aggregate_rows(TEST_DATA, "price=max")
-    assert result == 1199
+@pytest.mark.parametrize("operation,expected", [
+    ("price=avg", (999 + 1199 + 199) / 3),
+    ("price=max", 1199),
+    ("price=min", 199),
+    ("price=median", 999.0),
+    ("rating=max", 4.9),
+    ("rating=min", 4.6),
+])
+def test_aggregate_operations(test_data, operation, expected):
+    """Тест агрегатных операций."""
+    result = aggregate_rows(test_data, operation)
+    assert result == pytest.approx(expected, 0.1)
 
 
-def test_aggregate_median():
-    result = aggregate_rows(TEST_DATA, "price=median")
-    assert result == 999.0
+@pytest.mark.parametrize("column,reverse,expected_first", [
+    ("rating", False, "redmi"),  # самый низкий рейтинг
+    ("rating", True, "iphone"),  # самый высокий рейтинг
+    ("price", False, "redmi"),   # самая низкая цена
+    ("price", True, "galaxy"),   # самая высокая цена
+    ("name", False, "galaxy"),   # по алфавиту
+])
+def test_sort_rows(test_data, column, reverse, expected_first):
+    """Тест сортировки строк."""
+    result = sort_rows(test_data, column, reverse)
+    assert result[0]["name"] == expected_first
 
 
-def test_sorted_rating():
-    result = sort_rows(TEST_DATA, "rating")
-    assert result[0]["brand"] == "xiaomi"
+def test_invalid_condition():
+    """Тест некорректного условия фильтрации."""
+    with pytest.raises(InvalidConditionError):
+        filter_rows([], "invalid_condition")
+
+
+def test_unsupported_operation():
+    """Тест неподдерживаемой операции."""
+    with pytest.raises(UnsupportedOperationError):
+        aggregate_rows([{"price": "100"}], "price=sum")
+
+
+def test_empty_column():
+    """Тест отсутствующего столбца."""
+    with pytest.raises(ColumnNotFoundError):
+        aggregate_rows([{"price": "not_number"}], "price=avg")
+
+
+def test_filter_none_condition(test_data):
+    """Тест фильтрации без условия."""
+    result = filter_rows(test_data, None)
+    assert result == test_data
+
+
+def test_aggregate_none_condition():
+    """Тест агрегации без условия."""
+    result = aggregate_rows([], None)
+    assert result is None
